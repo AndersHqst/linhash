@@ -1,5 +1,7 @@
 #include <cstdint>
 #include <cstdio>
+#include <xmmintrin.h> 
+#include <smmintrin.h>
 
 typedef struct {
     uint64_t hi64;
