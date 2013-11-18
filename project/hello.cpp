@@ -1,8 +1,16 @@
 #include <iostream>
+#include <cstring>
+#include <fstream>
 
-int main(int argc, char* argv)
+using namespace std;
+
+int main(int argc, char** argv)
 {
-	std::cout << "Hello world" << std::endl;	
+	ifstream myfile("smalldata.dat");
+	int a;
+	while(myfile >> hex >> a) {
+		cout << a << endl;
+	}
 	return 0;	
 
 }

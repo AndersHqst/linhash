@@ -2,29 +2,67 @@
 #include <smmintrin.h>
 #include <cstdint>
 #include <cstdio>
+#include <bitset>
+#include <iostream>
 #include "gf.hpp"
 
-GF::GF(int k, int l, int* p)
-{
-	this->k = k;
-	this->l = l;
-	this->p = p;
+GF::GF(int kk, int ll, int* pp) : k(kk), l(ll), p(pp) {
+	// For temporary results of clmul ops
+	clres = new uint64_t[2*k];
 }
 
-uint64_t* GF::mul(uint64_t* a, uint64_t* b)
-{
-	printf("k: %u\n", k);
-	printf("l: %u\n", l);
-	
-	printf("contents of p[] \n");
-	for(int i = 0; i < l; i++) {
-		printf("p[%u] = %u\n", i, p[i]);
-	}
-	
+GF::~GF() {
+	delete[] clres;
+}
+
+int GF::fieldwordsize() const {
+	return k;
+}
+
+uint64_t* GF::unassigned() const {
+	return new uint64_t[k];
+}
+
+uint64_t* GF::zero() const {
 	uint64_t* res = new uint64_t[k];
+	for(int i = 0; i < k; i++) {
+		res[i] = 0;
+	}
+	return res;
+}
+
+uint64_t* GF::identity() const {
+	uint64_t* res = zero();
+	res[0] = 1UL;
+	return res;
+}
+
+uint64_t* GF::copyelement(uint64_t* a) const {
+	uint64_t* res = new uint64_t[k];
+	for(int i = 0; i < k; i++) {
+		res[i] = a[i];
+	}
+
+	return res;
+}
+
+void GF::copyinto(uint64_t* a, uint64_t* res) const {
+	for(int i = 0; i < k; i++) {
+		res[i] = a[i];
+	}
+}
+
+void GF::kindhash(uint64_t** a, uint64_t* z, int k, uint64_t* res) const {
+	copyinto(a[0], res);
+	for(int i = 1; i < k; i++) {
+		mul(res, z,  res);
+		add(res, a[i], res);
+	}
+}
+
+void GF::mul(uint64_t* a, uint64_t* b, uint64_t* res) const {
 
 	// Perform carry-less multiplication
-	uint64_t* clres = new uint64_t[2*k];
 	for(int i = 0; i < 2*k; i++) { clres[i] = 0; }
 	
 	uint128 tmp;
@@ -36,13 +74,6 @@ uint64_t* GF::mul(uint64_t* a, uint64_t* b)
 		}	
 	}	
 	
-	// Print result of clmul
-	for(int i = 2*k-1; i >= 0; i--) {
-		printf("%016llX", clres[i]);
-	}
-	printf("\n");
-
-
 	// Modular reduction
 
 	// m(x) = M(c(x)g(x)) stored in upper half of clres
@@ -67,14 +98,15 @@ uint64_t* GF::mul(uint64_t* a, uint64_t* b)
 	for(int j = 0; j < k; j++) {
 		res[j] ^= clres[j];
 	}
-
-	delete[] clres;
-	
-	return res;
 }
 
-inline uint128 GF::clmul(uint64_t a, uint64_t b)
-{
+inline void GF::add(uint64_t* a, uint64_t* b, uint64_t* res) const  {
+	for(int i = 0; i < k; i++) {
+		res[i] = a[i] ^ b[i];
+	}
+}
+
+inline uint128 GF::clmul(uint64_t a, uint64_t b) {
 	uint128 res;
 	__m128 tmpa;
 	__m128 tmpb;
@@ -103,9 +135,29 @@ inline uint128 GF::clmul(uint64_t a, uint64_t b)
 	return res;
 }
 
-void GF::print(uint64_t* a)
-{
+void GF::print(uint64_t* a) const {
 	for(int i = k-1; i >= 0; i--) {
-		printf("%016llX", a[i]);
+		printf("%016lX", a[i]);
 	}
+	printf("\n");
+}
+
+void GF::print(uint64_t** M, int n) const {
+	for(int i = 0; i < n; i++) {
+		print(M[i]);
+	}
+}
+
+void GF::printbits(uint64_t** M, int n) const {
+	for(int i = 0; i < n; i++) {
+		printbits(M[i]);
+	}
+}
+
+void GF::printbits(uint64_t* a) const {
+	for(int i = k-1; i >= 0; i--) {
+		std::bitset<64> row(a[i]);
+		std::cout << row;
+	}
+	std::cout << std::endl;
 }
